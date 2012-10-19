@@ -18,3 +18,9 @@ Layout overrides
 Requirements
 ------------
 K2 Content module (included in your K2 installation) must be installed but not necessarily activated
+
+Related links
+-------------
+- [JED entry of this extension, please make sure to rate if you use this extension](http://extensions.joomla.org/extensions/extension-specific/k2-extensions/20115)
+- [K2](http://getk2.org)
+- [Widgetkit](http://www.yootheme.com/widgetkit)
