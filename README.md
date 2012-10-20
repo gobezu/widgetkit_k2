@@ -5,7 +5,7 @@ You don't need any additional knowledge to get this going:
 - go to the Widgetkit component and click on "Use K2"
 - you will be presented with the already familiar options of:
     - which contents to select from K2 and what part of those contents to display
-    - how to display the selected contents in WidgetKit
+    - how to display the selected contents in Widgetkit
 
 Layout overrides
 ----------------
