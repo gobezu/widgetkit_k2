@@ -94,8 +94,8 @@ class WidgetkitK2WidgetkitHelper extends WidgetkitHelper {
 
                 // In priority order
                 $files = array(
-                    'i' . $item->virtuemart_product_id . '.php',
-                    'c' . $item->virtuemart_category_id . '.php',
+                    'i' . $item->id . '.php',
+                    'c' . $item->catid . '.php',
                     'item.php'
                 );
 
@@ -159,7 +159,7 @@ class WidgetkitK2WidgetkitHelper extends WidgetkitHelper {
 	}
         
         public function getList($params) {
-                if ($params->get('module') == 'mod_k2fields_content') {
+                if ($params->get('based_on', 'mod_k2_content') == 'mod_k2fields_contents') {
                         $componentParams = JComponentHelper::getParams('com_k2');
                         JLoader::register('K2FieldsModuleHelper', JPATH_SITE.'/components/com_k2fields/helpers/modulehelper.php');
                         $items = K2FieldsModuleHelper::getList($params, $componentParams, 'html', null, 'widgetkit_k2');

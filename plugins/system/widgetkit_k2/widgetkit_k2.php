@@ -257,6 +257,7 @@ class K2Widget {
                                 $module = $widget->k2['module_id'];
                                 $module = JprovenUtility::getModule($module);
                                 $params = $module->params;
+                                $params->merge($this->params);
                                 $params->set('partby', '');
                                 $params->set('items', $widget->k2['items']);
                                 $params->set('module_id', $widget->k2['module_id']);
