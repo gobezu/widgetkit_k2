@@ -38,7 +38,6 @@ class plgSystemWidgetkit_K2 extends JPlugin {
 		$this->widgetkit['event']->bind('site', array($this, 'init'));
 		$this->widgetkit['event']->bind('site', array($this, 'loadAssets'));
 		$this->widgetkit['event']->bind('widgetoutput', array($this, '_applycontentplugins'));
-
 	}
 
 	public function init() {
