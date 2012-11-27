@@ -95,4 +95,205 @@ class WidgetkitK2WidgetkitHelper extends WidgetkitHelper {
                 
                 return $items;
         }
+        
+private static function getWidget($productId, $type, $onlyRetrieve = false, $params = array()) {
+                $name = 'wkvm_auto_'.$productId;
+                $db = JFactory::getDbo();
+                
+                $db->setQuery('SELECT id, name, content FROM #__widgetkit_widget WHERE name = '.$db->quote($name));
+                
+                $rec = $db->loadObject();
+                
+                if ($onlyRetrieve) return $rec;
+                
+                if ($rec) {
+                        $rec->content = json_decode($rec->content);
+                        $rec->settings = $rec->content->settings;
+                } else {
+                        if ($params instanceof JRegistry) $params = $params->toArray();
+                        $keys = array_keys($params);
+                        $k = array_search('widget_style', $keys);
+                        $settings = $k !== false ? array_slice($params, $k + 1) : array();
+                        $rec = new stdClass();
+                        $rec->id = '';
+                        $rec->content = '';
+                        $rec->settings = $settings;
+                        $rec->name = $name;
+                }
+                
+                return $rec;
+        } 
+        
+        private static function save($item, $params) {
+                $type = $params->get('widget_type', 'gallery');
+                $widget = self::getWidget($item->id, $type, false, $params);
+                
+                if (!empty($widget) && !empty($widget->id)) return $widget->id;
+                
+                $widgetkit = Widgetkit::getInstance();
+                $wh = $widgetkit->getHelper('widget');
+                
+                $style = $params->get('widget_style', 'default');
+                $images = $item->images;
+                
+                if (empty($images)) {
+                        if (!empty($widget) && !empty($widget->id)) $wh->delete($widget->id);
+                        
+                        return true;
+                }
+                
+                $captionPart = $params->get('caption_part', '');
+                
+                if ($type == 'gallery') {
+                        $paths = array();
+                        $captions = array();
+                        $links = array();
+
+                        foreach ($images as $image) {
+                                $file = preg_replace('/^(\/|)images/', '', $image->file_url);
+                                $path = preg_replace('/^(\/|)images/', '', $image->file_url_folder);
+                                if (!in_array($path, $paths)) $paths[] = $path;
+                                $captions[$file] = $captionPart ? $image->$captionPart : '';
+                                $links[$file] = '';
+                        }
+                        
+                        $data = array(
+                                'type' => $type, 
+                                'id' => $widget->id,
+                                'name' => $widget->name, 
+                                'settings' => $widget->settings,
+                                'style' => $style,
+                                'captions' => $captions,
+                                'links' => $links,
+                                'paths' => $paths
+                        );                        
+                } else if ($type == 'slideshow') {
+                        $items = array();
+                        $titlePart = $params->get('title_part');
+                        $contentPart = $params->get('content_part', '');
+                        $navigationPart = $params->get('navigation_part', '');
+                        $navigationPart = explode('+', $navigationPart);
+                        $contentPartPosition = $params->get('content_part_position', '');
+                        $url = JURI::base();
+                        
+                        foreach ($images as $image) {
+                                $id = uniqid();
+                                $title = $titlePart ? $image->$titlePart : '';
+                                $caption = $captionPart ? $image->$captionPart : '';
+                                $alt = $image->file_meta;
+                                
+                                if (!$alt) $alt = $caption ? $caption : $title;
+                                
+                                $content = JHtml::image($url.$image->file_url, $alt);
+                                
+                                if ($contentPart) {
+                                        if ($contentPartPosition == 'before') {
+                                                $content = $image->$contentPart . $content;
+                                        } else {
+                                                $content = $content . $image->$contentPart;
+                                        }
+                                }
+                                
+                                $items[$id] = array('title'=>$title, 'content'=>$content, 'caption'=>$caption);
+                                
+                                if (!empty($navigationPart)) {
+                                        $navigation = '';
+                                        
+                                        if (in_array('file_url_thumb', $navigationPart)) {
+                                                $navigation .= JHtml::image($url.$image->file_url_thumb, $alt);
+                                        }
+                                        
+                                        if (in_array('file_title', $navigationPart)) {
+                                                $navigation .= $image->file_title;
+                                        }
+                                        
+                                        if (in_array('file_description', $navigationPart)) {
+                                                $navigation .= $image->file_description;
+                                        }
+                                        
+                                        if ($navigation) {
+                                                $items[$id]['navigation'] = $navigation;
+                                        }
+                                }
+                                
+                                if (!empty($navigation)) {
+                                        $widget->settings['items_per_set'] = $params->get('items_per_set', 3);
+                                        $widget->settings['slideset_buttons'] = 1;
+                                }
+                        }
+                        
+                        $data = array(
+                                'type' => $type, 
+                                'id' => $widget->id,
+                                'name' => $widget->name, 
+                                'settings' => $widget->settings,
+                                'style' => $style,
+                                'items' => $items
+                        );                        
+                }
+                
+                $data['settings']['style'] = $style;
+                $source = $params->get('thumb_size_source', 'custom');
+                
+                if ($source == 'custom') {
+                        $data['settings']['thumb_width'] = $params->get('thumb_width', 100);
+                        $data['settings']['thumb_height'] = $params->get('thumb_height', 100);
+                } else if ($source == 'vm') {
+                        if (!class_exists('VmConfig')) {
+                                require_once JPATH_ADMINISTRATOR . '/components/com_virtuemart/helpers/config.php';
+                        }
+                        
+                        VmConfig::loadConfig();
+                        
+                        $data['settings']['thumb_width'] = VmConfig::get('img_width', $params->get('thumb_width', 100));
+                        $data['settings']['thumb_height'] = VmConfig::get('img_height', $params->get('thumb_height', 100));
+                }
+                
+                return $wh->save($data);
+        }
+        
+        public static function delete($productId = null) {
+                if (!self::isInstalled()) return false;
+                
+                if ($productId) {
+                        $widget = self::getWidget($productId, null, true);
+
+                        if (!$widget) return;
+
+                        $widgetkit = Widgetkit::getInstance();
+                        $wh = $widgetkit->getHelper('widget');
+
+                        return $wh->delete($widget->id);
+                } else {
+                        $db = JFactory::getDbo();
+                        $db->setQuery('DELETE FROM #__widgetkit_widget WHERE name LIKE "wkvm_auto_%"');
+                        $db->query();
+                }
+        }        
+        
+        public static function render($item, $params) {
+                if (!self::isInstalled()) return '';
+                
+                $widgetId = self::save($item, $params);
+                $widgetkit = Widgetkit::getInstance();
+                $wh = $widgetkit->getHelper('widget');
+                
+                $out = $wh->render($widgetId);
+                
+                return $out;
+        }
+        
+        private static function isInstalled() {
+                jimport('joomla.filesystem.file');
+                
+                if (!JFile::exists(JPATH_ADMINISTRATOR.'/components/com_widgetkit/classes/widgetkit.php')
+				|| !JComponentHelper::getComponent('com_widgetkit', true)->enabled) {
+                        trigger_error('<b>Widgetkit K2 plugin</b>: Widgetkit is not installed.');
+                        return;
+                }
+                
+                require_once JPATH_ADMINISTRATOR.'/components/com_widgetkit/widgetkit.php';
+                
+                return true;
+        }        
 }

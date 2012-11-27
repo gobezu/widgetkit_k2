@@ -16,6 +16,80 @@ jimport('joomla.plugin.plugin');
 class plgSystemWidgetkit_K2 extends JPlugin {
 	public $widgetkit;
 
+        public function onContentPrepare($context, &$item, &$params, $limitstart) {
+                if (!$item || !isset($item->id) || !(bool) $this->params->get('item_gallery', 0)) {
+                        self::plgReplace($item, '');
+                        return '';
+                }
+                
+                $input = JFactory::getApplication()->input;
+                $view = $input->get('view', '', 'cmd');
+                $task = $input->get('task', '', 'cmd');
+                
+                if (!(($view == 'item' && $item->params->get('itemImageGallery')) || ($view == 'itemlist' && ($task == '' || $task == 'category') && $item->params->get('catItemImageGallery')) || ($view == 'relatedByTag'))) {
+                        self::plgReplace($item, '');
+                        return '';
+                }
+                
+                $wkk2 = WidgetkitVirtuemartWidgetkitHelper::render($item, $this->params);
+                $item->gallery = $wkk2;
+                self::plgReplace($item, $wkk2);
+                
+                return '';                
+        }
+        
+        private static function plgReplace(&$item, $wkk2) {
+                $item->text = str_replace('[wkk2]', $wkk2, $item->text);
+        }
+        
+        public function onContentPrepareForm($form, $data) {
+                if ($data->element != 'widgetkit_k2') return;
+                
+                JFactory::getLanguage()->load('plg_system_widgetkit_k2', JPATH_ADMINISTRATOR);                
+                
+                $type = isset($data->params['widget_type']) ? $data->params['widget_type'] : 'slideshow';
+                
+                jimport('joomla.filesystem.file');
+                $xml = JPATH_SITE.'/media/widgetkit/widgets/'.$type.'/'.$type.'.xml';
+                $xml = JFile::read($xml);
+                $xml = trim($xml);
+
+                $xml = str_replace(
+                        array('<widget>', '<settings>', '</widget>', '</settings>', 'setting'), 
+                        array('<form><fields name="params">', '<fieldset name="widgetstyle"><field name="widget_style" type="folderlist" default="default" hide_none="true" label="Widget style" directory="media/widgetkit/widgets/'.$type.'/styles" filter="" exclude="" /><field type="spacer" name="generalsettingsseparator" label="General widget settings" />', '</fields></form>', '<field type="spacer" name="specificsettingsseparator" label="Widget style specific settings" /></fieldset>', 'field'), 
+                        $xml
+                );
+                
+                // remove the style setting as the type is incompatible
+                // ofc we could define a field type but we really don't need it 
+                // as we already know the style
+                $xml = preg_replace('#<[^\>]+type=[\"\']style[\"\'][^\>]+>#', '', $xml);
+                $style = isset($data->params['widget_style']) ? $data->params['widget_style'] : 'default';
+                $sxml = simplexml_load_file(JPATH_SITE.'/media/widgetkit/widgets/'.$type.'/styles/'.$style.'/config.xml');
+
+                foreach ($sxml->xpath('///setting') as $field) {
+                        $field = str_replace('setting', 'field', $field->asXML());
+                        $xml = str_replace('</fieldset>', $field.'</fieldset>', $xml);
+                }
+                
+                $form->load($xml);
+        }
+        
+        // Not the correct event but unfortunately K2 doesn't at current time support delete event
+        public function onFinderAfterDelete($context, $item) {
+                WidgetkitVirtuemartWidgetkitHelper::delete($product);
+        }
+        
+        public function onAfterContentSave($item, $isNew) {
+                WidgetkitVirtuemartWidgetkitHelper::delete($item->id);
+        }
+        
+        public function onExtensionAfterSave($context, $data, $isNew) {
+                if ($data->element != 'widgetkit_k2' || !(bool) $this->params->get('keep_synch', 1)) return;
+                
+                WidgetkitVirtuemartWidgetkitHelper::delete();
+        }        
+        
 	public function onAfterInitialise() {
 		jimport('joomla.filesystem.file');
 		if (!JFile::exists(JPATH_ADMINISTRATOR.'/components/com_widgetkit/classes/widgetkit.php')
