@@ -23,6 +23,7 @@ class plgSystemWidgetkit_K2 extends JPlugin {
                 }
                 
                 $input = JFactory::getApplication()->input;
+                
                 $view = $input->get('view', '', 'cmd');
                 $task = $input->get('task', '', 'cmd');
                 
@@ -31,7 +32,7 @@ class plgSystemWidgetkit_K2 extends JPlugin {
                         return '';
                 }
                 
-                $wkk2 = WidgetkitVirtuemartWidgetkitHelper::render($item, $this->params);
+                $wkk2 = WidgetkitK2WidgetkitHelper::render($item, $this->params);
                 $item->gallery = $wkk2;
                 self::plgReplace($item, $wkk2);
                 
@@ -77,17 +78,18 @@ class plgSystemWidgetkit_K2 extends JPlugin {
         
         // Not the correct event but unfortunately K2 doesn't at current time support delete event
         public function onFinderAfterDelete($context, $item) {
-                WidgetkitVirtuemartWidgetkitHelper::delete($product);
+                WidgetkitK2WidgetkitHelper::delete($item);
         }
         
         public function onAfterContentSave($item, $isNew) {
-                WidgetkitVirtuemartWidgetkitHelper::delete($item->id);
+//                if (JFactory::getApplication()->input->get('option', '', 'cmd') != 'com_virtuemart') return;
+//                WidgetkitK2WidgetkitHelper::delete($item->id);
         }
         
         public function onExtensionAfterSave($context, $data, $isNew) {
-                if ($data->element != 'widgetkit_k2' || !(bool) $this->params->get('keep_synch', 1)) return;
-                
-                WidgetkitVirtuemartWidgetkitHelper::delete();
+//                if ($data->element != 'widgetkit_k2' || !(bool) $this->params->get('keep_synch', 1)) return;
+//                
+//                WidgetkitK2WidgetkitHelper::delete();
         }        
         
 	public function onAfterInitialise() {
