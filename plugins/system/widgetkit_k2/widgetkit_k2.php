@@ -44,7 +44,7 @@ class plgSystemWidgetkit_K2 extends JPlugin {
         }
         
         public function onContentPrepareForm($form, $data) {
-                if ($data->element != 'widgetkit_k2') return;
+                if (!isset($data->element) || $data->element != 'widgetkit_k2') return;
                 
                 JFactory::getLanguage()->load('plg_system_widgetkit_k2', JPATH_ADMINISTRATOR);                
                 
